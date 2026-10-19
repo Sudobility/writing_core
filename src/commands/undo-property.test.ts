@@ -128,7 +128,7 @@ function randomDocument(seed: number): RandomDoc {
 
 /** Scene numbering is off in the seed templates; the lock commands need it on. */
 function pre(d: RandomDoc, id: string, params: unknown): void {
-  executeCommand({ doc: d.doc, model: d.model, ids: d.ids, actor: TEST_ACTOR, origin: createSessionOrigins(TEST_ACTOR).make('local-command', { commandId: id }), capabilities: new Set(['write'] as const), clock: () => 1_000, command: { id, params } });
+  executeCommand({ doc: d.doc, model: d.model, ids: d.ids, actor: TEST_ACTOR, origin: createSessionOrigins(TEST_ACTOR).make('local-command', { commandId: id }), capabilities: new Set(['write', 'comment', 'lockAdmin', 'revisionAdmin'] as const), clock: () => 1_000, command: { id, params } });
 }
 function enableNumbering(d: RandomDoc): void {
   pre(d, 'template.setSceneNumbering', { mode: 'both' });
@@ -147,6 +147,11 @@ const PARAMS: Record<string, (d: RandomDoc, r: () => number) => unknown | null> 
   'mark.toggle': (d) => ({ range: { anchor: { elementId: d.elementIds[1], offset: 0 }, head: { elementId: d.elementIds[2], offset: 2 } }, mark: 'b' }),
   'mark.set': (d) => ({ range: { anchor: { elementId: d.elementIds[1], offset: 0 }, head: { elementId: d.elementIds[1], offset: 3 } }, mark: 'hl', value: '#00FF00' }),
   'mark.clear': (d) => ({ range: { anchor: { elementId: d.elementIds[0], offset: 0 }, head: { elementId: d.elementIds[4], offset: 1 } } }),
+  'note.add': (d) => ({ anchor: { kind: 'element', elementId: d.elementIds[1] }, title: 'Note', body: 'A comment.' }),
+  'note.update': (d) => { const id = newId('note', d.ids); pre(d, 'note.add', { id, anchor: { kind: 'element', elementId: d.elementIds[1] }, body: 'x' }); return { noteId: id, title: 'Updated', body: 'Changed body.' }; },
+  'note.resolve': (d) => { const id = newId('note', d.ids); pre(d, 'note.add', { id, anchor: { kind: 'element', elementId: d.elementIds[1] }, body: 'x' }); return { noteId: id, resolved: true }; },
+  'note.delete': (d) => { const id = newId('note', d.ids); pre(d, 'note.add', { id, anchor: { kind: 'element', elementId: d.elementIds[1] }, body: 'x' }); return { noteId: id }; },
+  'note.reply': (d) => { const id = newId('note', d.ids); pre(d, 'note.add', { id, anchor: { kind: 'element', elementId: d.elementIds[1] }, body: 'x' }); return { noteId: id, body: 'A reply.' }; },
   'element.insert': (d) => ({ after: d.elementIds[2], style: 'st_action', text: 'inserted' }),
   'element.split': (d) => ({ at: { elementId: d.elementIds[1], offset: 2 } }),
   'element.setStyle': (d) => ({ elements: [d.elementIds[2], d.elementIds[3]], style: 'st_shot' }),
