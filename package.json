@@ -1,6 +1,6 @@
 {
   "name": "@sudobility/writing_core",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Headless, platform-free writing engine for screenplays, stage plays and manuscripts: collaborative document model (Yjs), templates, editing commands, SmartType and per-session undo",
   "type": "module",
   "main": "./dist/index.js",
@@ -39,8 +39,17 @@
     "verify": "bun run typecheck && bun run lint && bun run test:unit && bun run build",
     "prepublishOnly": "bun run clean && bun run verify"
   },
-  "files": ["dist/**/*", "CLAUDE.md"],
-  "keywords": ["screenwriting", "screenplay", "yjs", "collaborative", "fadewright"],
+  "files": [
+    "dist/**/*",
+    "CLAUDE.md"
+  ],
+  "keywords": [
+    "screenwriting",
+    "screenplay",
+    "yjs",
+    "collaborative",
+    "fadewright"
+  ],
   "author": "Sudobility",
   "license": "BUSL-1.1",
   "devDependencies": {
@@ -64,7 +73,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/johnqh/writing_core.git"
+    "url": "https://github.com/Sudobility/writing_core.git"
   },
   "dependencies": {
     "@noble/hashes": "^2.4.0",
