@@ -13,7 +13,15 @@ responsibility, see `docs/verification/V-02.md`).
 
 ## Installation
 
+This package is published to **GitHub Packages** under the `@sudobility`
+scope, so a consumer must point that scope at the GitHub registry first
+(the repo's own `.npmrc` already does this):
+
+    echo '@sudobility:registry=https://npm.pkg.github.com' >> .npmrc
     bun add @sudobility/writing_core
+
+Install needs a GitHub token with `read:packages` in the environment
+(e.g. `GH_PACKAGES_READ_TOKEN`) when the registry requires authentication.
 
 ## Usage
 
@@ -39,8 +47,25 @@ console.log(model.scenes()[0]!.heading.location); // "DINER"
 
 ## Development
 
-    bun install
-    bun run verify
+    bun install            # Bun is used for installs and scripts
+    bun run verify         # typecheck + lint + unit tests + build (run before every commit)
+
+Individual steps:
+
+    bun run build          # emit dist/ via tsc -p tsconfig.esm.json
+    bun run test:unit      # vitest run  (bun run test:watch to watch)
+    bun run typecheck      # tsc --noEmit over src, then tests + scripts/
+    bun run lint           # eslint src scripts
+    bun run bench:layout   # layout performance benchmark
+
+TypeScript (strict, ESM-only). The public entry point is `src/index.ts`;
+`@sudobility/writing_core/internal` exposes framework-extension internals
+that bypass the command-layer guarantees — application code should only
+ever need the main entry.
+
+Build-time generators (run by hand, not in CI): `templates:generate`,
+`hash:vectors`, `fonts:generate`, `ucd:generate`, `dict:generate`,
+`fixtures:build`, `golden:update`.
 
 ## License
 
