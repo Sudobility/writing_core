@@ -69,17 +69,13 @@ describe('buildElementIndex', () => {
     const rows: [string, string][] = [];
     for (let s = 0; s < 100; s++) rows.push(...scene(29, `INT. R${s} - DAY`));
     const { h, ids, layout } = build(rows);
-    const t0 = performance.now();
     const index = buildElementIndex(layout, h.model);
-    const build_ms = performance.now() - t0;
     expect(ids).toHaveLength(3000);
     expect(layout.pages.length).toBeGreaterThan(50);
     const total = layout.pages.reduce((n, p, i) => n + index.elementsOnPage(i).length, 0);
     expect(total).toBeGreaterThanOrEqual(3000);
-    const t1 = performance.now();
-    for (let r = 0; r < 20; r++) for (const id of ids) index.linesOf(id);
-    expect(performance.now() - t1).toBeLessThan(500);
-    expect(build_ms).toBeLessThan(2000);
+    // Exercise linesOf across every element for coverage (not timed — perf lives in bench).
+    for (const id of ids) expect(index.linesOf(id)).toBeDefined();
     expect(index.sceneExtents()).toHaveLength(100);
     const last = index.sceneExtents().at(-1)!;
     expect(last.lastPage).toBe(layout.pages.length - 1);

@@ -48,13 +48,20 @@ describe('positionAfter', () => {
     expect(tail).toEqual(created);
   });
 
-  it('answers over a 3000-element document quickly and still correctly', () => {
+  it('answers correctly over a 3000-element document', () => {
     const h = commandHarness();
     const ids = h.replaceBody(Array.from({ length: 3000 }, (_, i): [string, string] => ['st_action', `Line ${i}.`]));
     const container = bodyElements(h.doc);
-    const t0 = performance.now();
-    for (let i = 0; i < 200; i++) positionAfter(container, ids[i * 15]!, { ids: h.ids });
-    const ms = performance.now() - t0;
-    expect(ms).toBeLessThan(1000);
+    // Agree with the brute-force O(n) oracle across the whole large document. Perf (that
+    // positionAfter stays sub-linear) is tracked by `bun run bench:layout`, not here — a
+    // wall-clock assertion in a unit test measures the machine, not the code.
+    for (let i = 0; i < 200; i++) {
+      const afterId = ids[i * 15]!;
+      const afterPos = String((container.get(afterId) as YMap).get('pos'));
+      const expectedNext = scanNext(container, afterPos);
+      const got = positionAfter(container, afterId, { ids: h.ids });
+      expect(got > afterPos).toBe(true);
+      if (expectedNext !== null) expect(got < expectedNext).toBe(true);
+    }
   });
 });
