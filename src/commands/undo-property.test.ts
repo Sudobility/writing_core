@@ -150,6 +150,7 @@ const PARAMS: Record<string, (d: RandomDoc, r: () => number) => unknown | null> 
   'note.add': (d) => ({ anchor: { kind: 'element', elementId: d.elementIds[1] }, title: 'Note', body: 'A comment.' }),
   'note.update': (d) => { const id = newId('note', d.ids); pre(d, 'note.add', { id, anchor: { kind: 'element', elementId: d.elementIds[1] }, body: 'x' }); return { noteId: id, title: 'Updated', body: 'Changed body.' }; },
   'note.resolve': (d) => { const id = newId('note', d.ids); pre(d, 'note.add', { id, anchor: { kind: 'element', elementId: d.elementIds[1] }, body: 'x' }); return { noteId: id, resolved: true }; },
+  'note.setStatus': (d) => { const id = newId('note', d.ids); pre(d, 'note.add', { id, anchor: { kind: 'element', elementId: d.elementIds[1] }, body: 'x' }); return { noteId: id, status: 'todo' }; },
   'note.delete': (d) => { const id = newId('note', d.ids); pre(d, 'note.add', { id, anchor: { kind: 'element', elementId: d.elementIds[1] }, body: 'x' }); return { noteId: id }; },
   'note.reply': (d) => { const id = newId('note', d.ids); pre(d, 'note.add', { id, anchor: { kind: 'element', elementId: d.elementIds[1] }, body: 'x' }); return { noteId: id, body: 'A reply.' }; },
   'element.insert': (d) => ({ after: d.elementIds[2], style: 'st_action', text: 'inserted' }),

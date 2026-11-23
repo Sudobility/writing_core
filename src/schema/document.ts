@@ -153,10 +153,33 @@ export const NoteAnchor = z.discriminatedUnion('kind', [
 ]);
 export type NoteAnchor = z.infer<typeof NoteAnchor>;
 
+/**
+ * Structured-comment lifecycle. A comment is born `pending` (an untriaged finding — the writer's own,
+ * an org member's, or an AI review's). The writer triages it to `todo` (actionable), `completed`
+ * (addressed) or `rejected` (dismissed). Only `pending`/`todo` are shown; `rejected`/`completed` are
+ * kept (hidden, reopenable) for history. `resolved` ({by,at}) remains the audit stamp for who/when a
+ * note left the active set. Legacy notes carry no `status`; the read model derives one from `resolved`.
+ */
+export const NOTE_STATUSES = ['pending', 'todo', 'rejected', 'completed'] as const;
+export const NoteStatus = z.enum(NOTE_STATUSES);
+export type NoteStatus = z.infer<typeof NoteStatus>;
+/** Who authored the comment. Legacy notes default to `writer` in the read model. */
+export const NOTE_SOURCES = ['writer', 'member', 'ai'] as const;
+export const NoteSource = z.enum(NOTE_SOURCES);
+export type NoteSource = z.infer<typeof NoteSource>;
+/** Optional AI-assigned weight; `category` (the comment "type") is a free string validated by the
+ * higher layers (screenwriter_types `REVIEW_CATEGORIES`) so writing_core stays domain-agnostic. */
+export const NOTE_SEVERITIES = ['praise', 'minor', 'moderate', 'major'] as const;
+export const NoteSeverity = z.enum(NOTE_SEVERITIES);
+export type NoteSeverity = z.infer<typeof NoteSeverity>;
+
 export const NoteJSON = z.object({
   id: idSchema('note'), anchor: NoteAnchor, typeId: idSchema('ntp'), title: z.string(), body: TextJSON, color: HexColor.nullable(),
   authorUid: z.string(), createdAt: Timestamp, updatedAt: Timestamp, resolved: z.object({ by: z.string(), at: Timestamp }).nullable(),
   includeInPdf: z.boolean(), replies: z.array(NoteReplyJSON), mentions: z.array(z.string()),
+  // Structured-comment fields (optional: legacy notes predate them; the read model fills defaults).
+  category: z.string().optional(), suggestion: TextJSON.nullable().optional(), status: NoteStatus.optional(),
+  source: NoteSource.optional(), severity: NoteSeverity.nullable().optional(),
   detachedFrom: idSchema('el').optional(), importMeta: z.record(z.string(), JsonValue).optional(),
 });
 export type NoteJSON = z.infer<typeof NoteJSON>;

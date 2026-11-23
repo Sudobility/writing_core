@@ -3,6 +3,7 @@ import { z } from 'zod/v4';
 import { newId } from '../ids/ids.js';
 import { positionBetween } from '../model/positions.js';
 import { writeTextJSON } from '../model/ytext.js';
+import { NOTE_SEVERITIES, NOTE_SOURCES, NOTE_STATUSES } from '../schema/document.js';
 import { HexColor, idSchema } from '../schema/primitives.js';
 import { textJSONFromPlain } from '../schema/text.js';
 import { elementIdsBetween, resolveRange } from './element-ops.js';
@@ -114,6 +115,13 @@ export const NOTE_COMMANDS: CommandSpec<never>[] = [
     color: HexColor.nullable().optional(),
     includeInPdf: z.boolean().optional(),
     mentions: z.array(z.string()).optional(),
+    // Structured-comment fields. `category` is the comment "type" (free string, constrained by the
+    // higher layers). `suggestion` is the concrete action. New comments default to `pending`/`writer`.
+    category: z.string().optional(),
+    suggestion: z.string().max(BODY_MAX).optional(),
+    status: z.enum(NOTE_STATUSES).optional(),
+    source: z.enum(NOTE_SOURCES).optional(),
+    severity: z.enum(NOTE_SEVERITIES).nullable().optional(),
   }), (ctx, p) => {
     // Validate the anchor target up front (refuse-before-write). Capture the id into a local before
     // any closure — TS drops the discriminated-union narrowing of `p.anchor` inside a callback.
@@ -157,6 +165,12 @@ export const NOTE_COMMANDS: CommandSpec<never>[] = [
     m.set('includeInPdf', p.includeInPdf ?? false);
     m.set('replies', new Y.Array<YMap>());
     m.set('mentions', p.mentions ?? []);
+    m.set('category', p.category ?? 'other');
+    if (p.suggestion) writeTextJSON(m.set('suggestion', new Y.Text()) as Y.Text, textJSONFromPlain(p.suggestion));
+    else m.set('suggestion', null);
+    m.set('status', p.status ?? 'pending');
+    m.set('source', p.source ?? 'writer');
+    m.set('severity', p.severity ?? null);
     return { ok: true };
   }),
 
@@ -168,6 +182,10 @@ export const NOTE_COMMANDS: CommandSpec<never>[] = [
     typeId: idSchema('ntp').optional(),
     includeInPdf: z.boolean().optional(),
     mentions: z.array(z.string()).optional(),
+    category: z.string().optional(),
+    // `suggestion: null` clears it; a string replaces it.
+    suggestion: z.string().max(BODY_MAX).nullable().optional(),
+    severity: z.enum(NOTE_SEVERITIES).nullable().optional(),
   }), (ctx, p) => {
     const m = note(ctx, p.noteId);
     if (!m) return { ok: false, reason: 'notFound' };
@@ -177,19 +195,41 @@ export const NOTE_COMMANDS: CommandSpec<never>[] = [
     if (p.typeId !== undefined) m.set('typeId', resolveTypeId(ctx, p.typeId));
     if (p.includeInPdf !== undefined) m.set('includeInPdf', p.includeInPdf);
     if (p.mentions !== undefined) m.set('mentions', p.mentions);
+    if (p.category !== undefined) m.set('category', p.category);
+    if (p.suggestion !== undefined) {
+      if (p.suggestion) writeTextJSON(m.set('suggestion', new Y.Text()) as Y.Text, textJSONFromPlain(p.suggestion));
+      else m.set('suggestion', null);
+    }
+    if (p.severity !== undefined) m.set('severity', p.severity);
     m.set('updatedAt', ctx.clock());
     return { ok: true };
   }),
 
-  // Resolve / reopen — "dismiss" a comment. `resolved` is `{ by, at } | null`, so a dismissed note
-  // keeps who dismissed it and when; reopening clears it.
+  // Resolve / reopen — the legacy binary path, kept for compatibility. It now also moves `status` so
+  // the two stay in sync (resolved → `completed`, reopened → `pending`). New triage goes through
+  // `note.setStatus`. Stays at `comment` capability for back-compat with existing callers/tests.
   spec('note.resolve', z.object({ noteId: idSchema('note'), resolved: z.boolean() }), (ctx, p) => {
     const m = note(ctx, p.noteId);
     if (!m) return { ok: false, reason: 'notFound' };
     m.set('resolved', p.resolved ? { by: ctx.actor.userId, at: ctx.clock() } : null);
+    m.set('status', p.resolved ? 'completed' : 'pending');
     m.set('updatedAt', ctx.clock());
     return { ok: true };
   }),
+
+  // Triage a comment through its lifecycle (pending → todo/completed/rejected, and reopen). This is
+  // the "writer reviews a comment" action, so it requires full `write` capability — a comment-only
+  // collaborator (org member) may add/reply but may NOT triage. The `resolved` audit stamp is kept in
+  // sync: a comment leaving the active set (completed/rejected) records who/when; reactivating clears it.
+  defineCommand('note.setStatus', z.object({ noteId: idSchema('note'), status: z.enum(NOTE_STATUSES) }), (ctx, p) => {
+    const m = note(ctx, p.noteId);
+    if (!m) return { ok: false, reason: 'notFound' };
+    const leaving = p.status === 'completed' || p.status === 'rejected';
+    m.set('status', p.status);
+    m.set('resolved', leaving ? { by: ctx.actor.userId, at: ctx.clock() } : null);
+    m.set('updatedAt', ctx.clock());
+    return { ok: true };
+  }, { requires: ['write'] }),
 
   spec('note.delete', z.object({ noteId: idSchema('note') }), (ctx, p) => {
     const m = note(ctx, p.noteId);

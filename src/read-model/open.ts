@@ -9,8 +9,8 @@ import { validateDocument } from '../model/validate/index.js';
 import { orderElements, sortedRecords } from '../model/ymap.js';
 import { readTextJSON, scanText } from '../model/ytext.js';
 import type {
-  AltJSON, BeatJSON, BinItemJSON, BookmarkJSON, DocumentJSON, DocumentMeta, EmbeddedTemplateJSON, ProductionJSON, RevisionsJSON, SettingsJSON,
-  ShotJSON, TrackChangesJSON, WriterJSON,
+  AltJSON, BeatJSON, BinItemJSON, BookmarkJSON, DocumentJSON, DocumentMeta, EmbeddedTemplateJSON, NoteJSON, NoteSource, NoteStatus,
+  ProductionJSON, RevisionsJSON, SettingsJSON, ShotJSON, TrackChangesJSON, WriterJSON,
 } from '../schema/document.js';
 import type { EntityJSON } from '../schema/entities.js';
 import type { MacroRecord, StyleDef } from '../schema/template.js';
@@ -30,6 +30,22 @@ import type {
 } from './views.js';
 
 type YMap = Y.Map<unknown>;
+
+/**
+ * Fill the structured-comment fields that legacy notes (written before the comment lifecycle) lack,
+ * so `NoteView` consumers never branch on "field present?". A legacy note's `status` is derived from
+ * its `resolved` stamp (resolved → `completed`, else `pending`); `source` defaults to `writer`.
+ */
+function normalizeNote(n: NoteJSON): NoteView {
+  return {
+    ...n,
+    category: n.category ?? 'other',
+    suggestion: n.suggestion ?? null,
+    status: n.status ?? (n.resolved ? 'completed' : 'pending'),
+    source: n.source ?? 'writer',
+    severity: n.severity ?? null,
+  };
+}
 
 export interface OpenDocumentOptions {
   /** Run `validateDocument(doc).repair()` for `autoRepair` issues before the model's initial
@@ -85,7 +101,7 @@ export interface DocumentModel {
   occurrences(entityId: EntityId): readonly OccurrenceView[];
   tags(filter?: { elementId?: ElementId; categoryId?: string; entityId?: EntityId }): readonly TagView[];
   tagCategories(): readonly TagCategoryView[];
-  notes(filter?: { elementId?: ElementId; resolved?: boolean }): readonly NoteView[];
+  notes(filter?: { elementId?: ElementId; resolved?: boolean; status?: NoteStatus | readonly NoteStatus[]; source?: NoteSource; visible?: boolean }): readonly NoteView[];
   revisionState(): RevisionsJSON;
   trackChangesState(): TrackChangesJSON;
   productionState(): ProductionJSON;
@@ -973,9 +989,15 @@ export function openDocument(doc: Y.Doc, deps: ModelDeps, options: OpenDocumentO
     },
     tagCategories: () => cached('tagCategories', () => readCollection(doc, 'tagCategories', (m) => m.toJSON() as TagCategoryView)),
     notes(filter = {}) {
-      const all = cached('notes', () => readCollection(doc, 'notes', readNote));
+      const all = cached('notes', () => readCollection(doc, 'notes', readNote).map(normalizeNote));
       return all.filter((n) => {
         if (filter.resolved !== undefined && (n.resolved !== null) !== filter.resolved) return false;
+        if (filter.visible !== undefined && ((n.status === 'pending' || n.status === 'todo') !== filter.visible)) return false;
+        if (filter.status !== undefined) {
+          const want = Array.isArray(filter.status) ? filter.status : [filter.status];
+          if (!want.includes(n.status)) return false;
+        }
+        if (filter.source !== undefined && n.source !== filter.source) return false;
         if (!filter.elementId) return true;
         const a = n.anchor;
         return (a.kind === 'element' || a.kind === 'scene') && a.elementId === filter.elementId;

@@ -2,7 +2,7 @@ import type { IdSource } from '../ids/id-source.js';
 import type { ElementId, EntityId, FolderId, StyleId } from '../ids/ids.js';
 import type { EntityJSON } from '../schema/entities.js';
 import type {
-  AltJSON, ElementMeta, ElementNumbering, NoteJSON, OmitRecord, TagCategoryJSON, TagJSON, TrackChangeRecord,
+  AltJSON, ElementMeta, ElementNumbering, NoteJSON, NoteSeverity, NoteSource, NoteStatus, OmitRecord, TagCategoryJSON, TagJSON, TrackChangeRecord,
 } from '../schema/document.js';
 import type { JsonValue } from '../schema/primitives.js';
 import type { ElementOverrides } from '../schema/template.js';
@@ -138,7 +138,18 @@ export interface OccurrenceView {
 }
 export type TagView = Readonly<TagJSON>;
 export type TagCategoryView = Readonly<TagCategoryJSON>;
-export type NoteView = Readonly<NoteJSON>;
+/**
+ * A note as consumers see it: the stored `NoteJSON` with the structured-comment fields normalized to
+ * non-optional values (legacy notes get derived defaults in `notes()`), so UI never branches on
+ * "field present?". `status` is derived from `resolved` when a legacy note has none.
+ */
+export type NoteView = Readonly<Omit<NoteJSON, 'category' | 'suggestion' | 'status' | 'source' | 'severity'>> & {
+  readonly category: string;
+  readonly suggestion: TextJSON | null;
+  readonly status: NoteStatus;
+  readonly source: NoteSource;
+  readonly severity: NoteSeverity | null;
+};
 export interface Suggestion {
   text: string;
   key: string;

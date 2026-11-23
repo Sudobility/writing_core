@@ -166,6 +166,8 @@ export function readNote(m: YMap): NoteJSON {
   const out: Record<string, unknown> = {};
   for (const [k, v] of m.entries()) {
     if (k === 'body') out.body = readTextJSON(v as Y.Text);
+    // `suggestion` is a nullable rich-text field (concrete action for the comment).
+    else if (k === 'suggestion') out.suggestion = v instanceof Y.Text ? readTextJSON(v) : null;
     else if (k === 'replies') {
       out.replies = (v as Y.Array<YMap>).toArray().map((r) => ({ ...(r.toJSON() as object), body: text(r, 'body') }));
     } else out[k] = v;
@@ -177,6 +179,7 @@ function writeNote(parent: YMap, n: NoteJSON): void {
   const m = parent.set(n.id, new Y.Map<unknown>());
   for (const [k, v] of Object.entries(n)) {
     if (k === 'body') newText(m, k, v as TextJSON);
+    else if (k === 'suggestion') { if (v) newText(m, k, v as TextJSON); else m.set(k, null); }
     else if (k === 'replies') {
       const arr = m.set('replies', new Y.Array<YMap>());
       for (const r of n.replies) {
