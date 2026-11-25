@@ -1,6 +1,6 @@
 {
   "name": "@sudobility/writing_core",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "description": "Headless, platform-free writing engine for screenplays, stage plays and manuscripts: collaborative document model (Yjs), templates, editing commands, SmartType and per-session undo",
   "type": "module",
   "main": "./dist/index.js",

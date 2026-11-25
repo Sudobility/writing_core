@@ -59,6 +59,9 @@ export const AnimalFields = z.strictObject({ species: z.string().optional(), bre
 export const BackgroundActorFields = z.strictObject({ count: z.number().optional(), description: z.string().optional() });
 export const SoundMusicFields = z.strictObject({ cueType: z.enum(['diegetic', 'score', 'source', 'effect']).optional(), licensed: z.boolean().optional() });
 const NoFields = z.strictObject({});
+// `misc` is the generic escape-hatch kind (e.g. the reserved "Story" entity): it carries app-defined bags such as
+// `sceneStoryboards`, so its fields are an open record rather than strictly empty.
+const MiscFields = z.record(z.string(), z.unknown());
 
 export const ENTITY_FIELD_SCHEMAS: Record<EntityKind, z.ZodType> = {
   character: CharacterFields, location: LocationFields,
@@ -67,7 +70,7 @@ export const ENTITY_FIELD_SCHEMAS: Record<EntityKind, z.ZodType> = {
   sound: SoundMusicFields, music: SoundMusicFields,
   makeupHair: NoFields, specialEffect: NoFields, visualEffect: NoFields, mechanicalEffect: NoFields, stunt: NoFields,
   camera: NoFields, security: NoFields, additionalLabor: NoFields, animalHandler: NoFields, artDepartment: NoFields,
-  unit: NoFields, scriptDay: NoFields, sequence: NoFields, misc: NoFields,
+  unit: NoFields, scriptDay: NoFields, sequence: NoFields, misc: MiscFields,
 };
 
 export const EntityJSON = z
